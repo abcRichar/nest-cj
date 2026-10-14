@@ -1,0 +1,422 @@
+// Prisma schema —— 全栈英语学习平台
+// 说明：为便于「手动导入 SQL」与表结构可读性，枚举统一以字符串存储（VARCHAR），
+//       取值与 packages/shared 中的枚举常量严格一一对应。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------- 用户 ----------------------------
+model User {
+  id          Int       @id @default(autoincrement())
+  username    String    @unique @db.VarChar(50)
+  email       String    @unique @db.VarChar(120)
+  password    String    @db.VarChar(120)
+  nickname    String    @db.VarChar(50)
+  /// 密文存储（AES-256-CBC）
+  phone       String?   @db.VarChar(128)
+  /// 手机号 md5，用于密文状态下的等值检索
+  phoneHash   String?   @db.VarChar(32)
+  avatar      String?   @db.VarChar(500)
+  bio         String?   @db.VarChar(255)
+  /// USER / ADMIN
+  role        String    @default("USER") @db.VarChar(20)
+  /// ACTIVE / DISABLED
+  status      String    @default("ACTIVE") @db.VarChar(20)
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  courses     UserCourse[]
+  orders      Order[]
+  wordBooks   WordBook[]
+  words       Word[]
+  conversations Conversation[]
+  studyRecords StudyRecord[]
+  files       FileObject[]
+  reports     DailyReport[]
+
+  @@index([email])
+  @@index([role, status])
+  @@index([phoneHash])
+  @@map("user")
+}
+
+// ---------------------------- 课程 ----------------------------
+model CourseCategory {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(50)
+  sort      Int      @default(0)
+  createdAt DateTime @default(now())
+
+  courses   Course[]
+
+  @@map("course_category")
+}
+
+model Course {
+  id            Int      @id @default(autoincrement())
+  title         String   @db.VarChar(120)
+  subtitle      String?  @db.VarChar(255)
+  cover         String?  @db.VarChar(500)
+  description   String?  @db.Text
+  /// 售价（分）
+  price         Int      @default(0)
+  /// 原价（分）
+  originalPrice Int?
+  /// BEGINNER / INTERMEDIATE / ADVANCED
+  level         String   @default("BEGINNER") @db.VarChar(20)
+  categoryId    Int?
+  teacher       String   @default("") @db.VarChar(50)
+  /// 总时长（秒）
+  duration      Int      @default(0)
+  lessonCount   Int      @default(0)
+  studentCount  Int      @default(0)
+  rating        Decimal  @default(5.0) @db.Decimal(3, 1)
+  /// JSON 数组字符串
+  tags          String?  @db.VarChar(500)
+  /// DRAFT / PUBLISHED / OFFLINE
+  status        String   @default("DRAFT") @db.VarChar(20)
+  sort          Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  category CourseCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  chapters CourseChapter[]
+  lessons  CourseLesson[]
+  orders   Order[]
+  userCourses UserCourse[]
+
+  @@index([status, sort])
+  @@index([categoryId])
+  @@map("course")
+}
+
+model CourseChapter {
+  id        Int      @id @default(autoincrement())
+  courseId  Int
+  title     String   @db.VarChar(120)
+  sort      Int      @default(0)
+  createdAt DateTime @default(now())
+
+  course  Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons CourseLesson[]
+
+  @@index([courseId])
+  @@map("course_chapter")
+}
+
+model CourseLesson {
+  id        Int      @id @default(autoincrement())
+  chapterId Int
+  courseId  Int
+  title     String   @db.VarChar(120)
+  videoUrl  String?  @db.VarChar(500)
+  /// 时长（秒）
+  duration  Int      @default(0)
+  /// 是否试看
+  isFree    Boolean  @default(false)
+  sort      Int      @default(0)
+  createdAt DateTime @default(now())
+
+  chapter CourseChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  course  Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId])
+  @@index([chapterId])
+  @@map("course_lesson")
+}
+
+/// 用户已购课程 / 学习进度
+model UserCourse {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  courseId     Int
+  orderId      Int?
+  /// 进度百分比 0-100
+  progress     Int      @default(0)
+  lastLessonId Int?
+  lastStudyAt  DateTime?
+  expireAt     DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@map("user_course")
+}
+
+// ---------------------------- 单词 ----------------------------
+model WordBook {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  name        String   @db.VarChar(80)
+  description String?  @db.VarChar(255)
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  words Word[]
+
+  @@index([userId])
+  @@map("word_book")
+}
+
+model Word {
+  id           Int       @id @default(autoincrement())
+  bookId       Int
+  userId       Int
+  word         String    @db.VarChar(80)
+  phonetic     String?   @db.VarChar(80)
+  translation  String    @db.VarChar(500)
+  example      String?   @db.VarChar(500)
+  exampleZh    String?   @db.VarChar(500)
+  audioUrl     String?   @db.VarChar(500)
+  /// JSON 数组字符串
+  tags         String?   @db.VarChar(255)
+  /// NEW / LEARNING / MASTERED
+  status       String    @default("NEW") @db.VarChar(20)
+  reviewCount  Int       @default(0)
+  correctCount Int       @default(0)
+  lastReviewAt DateTime?
+  nextReviewAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  book  WordBook        @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs  WordReviewLog[]
+
+  @@unique([bookId, word])
+  @@index([userId, status])
+  @@index([userId, nextReviewAt])
+  @@map("word")
+}
+
+model WordReviewLog {
+  id        Int      @id @default(autoincrement())
+  wordId    Int
+  userId    Int
+  correct   Boolean
+  /// 本次作答耗时（毫秒）
+  cost      Int      @default(0)
+  createdAt DateTime @default(now())
+
+  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@index([wordId])
+  @@index([userId, createdAt])
+  @@map("word_review_log")
+}
+
+// ---------------------------- 学习记录 ----------------------------
+model StudyRecord {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  courseId  Int
+  lessonId  Int
+  /// 本次学习时长（秒）
+  duration  Int      @default(0)
+  progress  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, courseId])
+  @@map("study_record")
+}
+
+// ---------------------------- 订单 ----------------------------
+model Order {
+  id            Int       @id @default(autoincrement())
+  orderNo       String    @unique @db.VarChar(40)
+  userId        Int
+  courseId      Int
+  /// 实付金额（分）
+  amount        Int
+  /// PENDING / PAID / CANCELLED / REFUNDED
+  status        String    @default("PENDING") @db.VarChar(20)
+  /// ALIPAY / BALANCE / FREE
+  payType       String    @default("ALIPAY") @db.VarChar(20)
+  alipayTradeNo String?   @db.VarChar(64)
+  paidAt        DateTime?
+  cancelledAt   DateTime?
+  /// 支付宝异步通知原文（留痕便于对账）
+  notifyRaw     String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@map("order")
+}
+
+// ---------------------------- AI 对话 ----------------------------
+model AiRole {
+  id           Int      @id @default(autoincrement())
+  code         String   @unique @db.VarChar(50)
+  name         String   @db.VarChar(50)
+  avatar       String?  @db.VarChar(500)
+  description  String?  @db.VarChar(255)
+  systemPrompt String   @db.Text
+  greeting     String   @db.VarChar(500)
+  category     String   @default("general") @db.VarChar(50)
+  enableSearch Boolean  @default(true)
+  enabled      Boolean  @default(true)
+  sort         Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  conversations Conversation[]
+
+  @@map("ai_role")
+}
+
+model Conversation {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  roleId       Int
+  title        String   @db.VarChar(120)
+  lastMessage  String?  @db.VarChar(500)
+  messageCount Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     AiRole     @relation(fields: [roleId], references: [id])
+  messages Message[]
+
+  @@index([userId, updatedAt])
+  @@map("conversation")
+}
+
+model Message {
+  id             Int      @id @default(autoincrement())
+  conversationId Int
+  /// user / assistant / system / tool
+  role           String   @db.VarChar(20)
+  content        String   @db.Text
+  /// JSON：ReAct 工具调用轨迹
+  toolCalls      String?  @db.Text
+  tokens         Int?
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("message")
+}
+
+// ------------------- LangGraph Checkpoint 持久化 -------------------
+model Checkpoint {
+  threadId           String  @map("thread_id") @db.VarChar(64)
+  checkpointNs       String  @default("") @map("checkpoint_ns") @db.VarChar(64)
+  checkpointId       String  @map("checkpoint_id") @db.VarChar(64)
+  parentCheckpointId String? @map("parent_checkpoint_id") @db.VarChar(64)
+  type               String  @db.VarChar(32)
+  checkpoint         String  @db.LongText
+  metadata           String  @db.LongText
+
+  @@id([threadId, checkpointNs, checkpointId])
+  @@index([threadId])
+  @@map("checkpoints")
+}
+
+model CheckpointBlob {
+  threadId     String  @map("thread_id") @db.VarChar(64)
+  checkpointNs String  @default("") @map("checkpoint_ns") @db.VarChar(64)
+  channel      String  @db.VarChar(128)
+  version      String  @db.VarChar(64)
+  type         String  @db.VarChar(32)
+  blob         String? @db.LongText
+
+  @@id([threadId, checkpointNs, channel, version])
+  @@index([threadId])
+  @@map("checkpoint_blobs")
+}
+
+model CheckpointWrite {
+  threadId     String @map("thread_id") @db.VarChar(64)
+  checkpointNs String @default("") @map("checkpoint_ns") @db.VarChar(64)
+  checkpointId String @map("checkpoint_id") @db.VarChar(64)
+  taskId       String @map("task_id") @db.VarChar(64)
+  idx          Int
+  channel      String @db.VarChar(128)
+  type         String @db.VarChar(32)
+  blob         String @db.LongText
+
+  @@id([threadId, checkpointNs, checkpointId, taskId, idx])
+  @@index([threadId])
+  @@map("checkpoint_writes")
+}
+
+// ---------------------------- 学习日报 ----------------------------
+model DailyReport {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  reportDate String   @db.VarChar(10)
+  content    String   @db.Text
+  /// JSON：生成日报时的统计数据快照
+  stats      String?  @db.Text
+  emailed    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reportDate])
+  @@map("daily_report")
+}
+
+// ---------------------------- 文件存储 ----------------------------
+model FileObject {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  bucket     String   @db.VarChar(64)
+  objectKey  String   @db.VarChar(500)
+  url        String   @db.VarChar(500)
+  name       String   @db.VarChar(255)
+  /// 字节
+  size       Int
+  mimeType   String   @db.VarChar(120)
+  /// 内容 md5，秒传依据
+  hash       String   @db.VarChar(64)
+  /// UPLOADING / COMPLETED / FAILED
+  status     String   @default("UPLOADING") @db.VarChar(20)
+  totalChunks Int     @default(1)
+  /// JSON：已上传分片序号
+  uploadedChunks String? @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([hash, size])
+  @@index([userId])
+  @@map("file_object")
+}
+
+// ---------------------------- 通知公告 ----------------------------
+model Notice {
+  id        Int      @id @default(autoincrement())
+  title     String   @db.VarChar(120)
+  content   String   @db.Text
+  /// SYSTEM / ACTIVITY / COURSE
+  type      String   @default("SYSTEM") @db.VarChar(20)
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notice")
+}

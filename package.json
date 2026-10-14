@@ -1,0 +1,32 @@
+{
+  "name": "english-learning-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "基于 Monorepo 的全栈英语学习平台：Web 前端 + 主业务服务 + 独立 AI 服务",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build:shared": "npm run build -w @elp/shared",
+    "build:server": "npm run build -w @elp/server",
+    "build:ai": "npm run build -w @elp/ai-service",
+    "build:web": "npm run build -w @elp/web",
+    "build": "npm run build:shared && npm run build:server && npm run build:ai && npm run build:web",
+    "dev:server": "npm run start:dev -w @elp/server",
+    "dev:ai": "npm run start:dev -w @elp/ai-service",
+    "dev:web": "npm run dev -w @elp/web",
+    "prisma:generate": "npm run prisma:generate -w @elp/server",
+    "prisma:push": "npm run prisma:push -w @elp/server",
+    "prisma:migrate": "npm run prisma:migrate -w @elp/server",
+    "db:seed": "npm run seed -w @elp/server",
+    "lint": "npm run lint -w @elp/server",
+    "clean": "node scripts/clean.mjs"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

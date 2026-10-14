@@ -1,0 +1,26 @@
+{
+  "name": "@elp/shared",
+  "version": "1.0.0",
+  "private": true,
+  "description": "前后端共享的 TypeScript 类型、枚举与常量（CJS + ESM 双产物）",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/cjs/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node ../../scripts/build-shared.mjs",
+    "dev": "tsc -p tsconfig.cjs.json --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

@@ -1,0 +1,128 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --elp-bg: #f5f7fb;
+  --elp-card: #ffffff;
+  --elp-text: #12213a;
+  --elp-sub: #6b7688;
+  --elp-line: #e8ecf3;
+  --elp-brand: #2f74ff;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--elp-bg);
+  color: var(--elp-text);
+  font-family: Inter, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 细滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #cfd7e3;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #b6c1d1;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@layer components {
+  .elp-card {
+    @apply bg-white rounded-xl2 shadow-card;
+  }
+  .elp-card-hover {
+    @apply transition-shadow duration-200 hover:shadow-hover;
+  }
+  .elp-title {
+    @apply text-ink-900 font-semibold;
+  }
+  .elp-sub {
+    @apply text-ink-500 text-sm;
+  }
+  .elp-section-title {
+    @apply flex items-center gap-2 text-lg font-semibold text-ink-900;
+  }
+  .elp-section-title::before {
+    content: '';
+    @apply block w-1 h-4 rounded bg-brand-500;
+  }
+}
+
+/* 页面切换动画 */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+/* AI 流式输出的光标 */
+.stream-cursor::after {
+  content: '▋';
+  margin-left: 2px;
+  color: var(--elp-brand);
+  animation: blink 1s steps(2, start) infinite;
+}
+@keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+/* Markdown 简单排版 */
+.md-body {
+  line-height: 1.8;
+  word-break: break-word;
+}
+.md-body p {
+  margin: 0 0 10px;
+}
+.md-body code {
+  background: #f2f4f8;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+}
+.md-body pre {
+  background: #0f1b2d;
+  color: #e6edf7;
+  padding: 14px 16px;
+  border-radius: 10px;
+  overflow: auto;
+  margin: 10px 0;
+}
+.md-body pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+.md-body ul,
+.md-body ol {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+.md-body strong {
+  font-weight: 600;
+}
